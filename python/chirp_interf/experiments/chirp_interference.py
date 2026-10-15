@@ -8,8 +8,9 @@ For f = f1 + f2 with rates -a and +a, the script computes:
 * the relative interference level per frame and the zone where it exceeds eps,
   together with the analytic bound Delta(t) < sqrt(D ln(2/eps)) / (pi sigma).
 
-It logs the maximal gap between the discrete and closed-form spectrograms and
-the interference zones, and saves a 2x2 figure.
+It logs the maximal gap between the discrete and closed-form spectrograms, and
+between the numerical and closed-form interference terms, on the frames whose
+window lies inside the signal; then the interference zones, and saves a 2x2 figure.
 
 Usage
 -----
@@ -33,9 +34,9 @@ from chirp_interf.plotting import configure_matplotlib, save_figure
 
 log = get_logger(__name__)
 
-#: Fraction of the signal duration excluded at each end when comparing with the
-#: closed form (zero padding biases the discrete STFT near the edges).
-EDGE = 0.05
+#: Number of ridge standard deviations kept around the instantaneous frequencies
+#: when cropping the frequency axis of the figure.
+CROP_STD = 4.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,7 +83,11 @@ def plot(times, freqs, maps, ratio, zones, bound, args) -> plt.Figure:
     -------
     matplotlib.figure.Figure
     """
-    sel = np.abs(freqs) <= 1.5 * (args.f0 + 0.5 * args.rate)     # crop empty frequencies
+    # Crop empty frequencies: keep the range swept by the instantaneous frequencies
+    # (f0 - rate t and -f0 + rate t for t in [0, 1]) plus CROP_STD ridge standard deviations.
+    ridge_std = np.sqrt(1 + (2 * np.pi * args.rate * args.win**2) ** 2) / (2 * np.pi * args.win)
+    if_max = max(abs(args.f0), abs(args.f0 - args.rate))
+    sel = np.abs(freqs) <= if_max + CROP_STD * ridge_std
     fig, axes = plt.subplots(2, 2, figsize=(12, 8.2), sharex=True)
 
     for ax, (Z, title, cmap, symmetric) in zip(axes.flat, maps):
@@ -99,13 +104,15 @@ def plot(times, freqs, maps, ratio, zones, bound, args) -> plt.Figure:
         for x in (lo, hi):
             for a_, c in zip(axes.flat[:3], ("w", "0.4", "0.4")):    # zone limits on the maps
                 a_.axvline(x, color=c, ls=":", lw=1)
-    for x in bound:
-        ax.axvline(x, color="tab:blue", lw=1)
+    for x in bound:                                   # draw only the limits inside the signal
+        if times[0] <= x <= times[-1]:
+            ax.axvline(x, color="tab:blue", lw=1)
     ax.plot([], [], color="tab:blue", lw=1, label=r"analytic bound")   # legend entry only
     ax.set(title=r"$\max_\eta 2|V_g f_1||V_g f_2| \,/\, \max_\eta (|V_g f_1|^2 + |V_g f_2|^2)$",
            ylim=(1e-6, 3), xlabel=r"time (s)")
     ax.legend(loc="lower center")
     axes[1, 0].set_xlabel(r"time (s)")
+    axes[0, 0].set_xlim(times[0], times[-1])          # shared by all panels
     fig.tight_layout()
     return fig
 
@@ -135,9 +142,18 @@ def main() -> None:
     half = itf.symmetric_gap_threshold(a, args.win, args.eps) / (2 * args.rate)
     tc = (b2 - b1) / (2 * a)
 
-    inner = (times > EDGE) & (times < times[-1] - EDGE)
-    err = np.max(np.abs(np.abs(V) ** 2 - (E1 + E2 + I))[:, inner])
-    log.info("max | |V_g f|^2 - closed form | = %.2e (peak %.3f)", err, np.max(np.abs(V) ** 2))
+    # Compare only the frames whose window lies entirely inside the signal: elsewhere
+    # the zero padding of the discrete STFT departs from the closed form on R.
+    half_window = (len(g) - 1) / 2 / args.fs
+    inner = (times >= half_window) & (times <= times[-1] - half_window)
+    if inner.any():
+        err = np.max(np.abs(np.abs(V) ** 2 - (E1 + E2 + I))[:, inner])
+        err_I = np.max(np.abs(I_num - I)[:, inner])
+        log.info("on [%.3f, %.3f] s (window inside the signal):", times[inner][0], times[inner][-1])
+        log.info("  max | |V_g f|^2 - (E1 + E2 + I) | = %.2e (peak %.3f)", err, np.max(np.abs(V) ** 2))
+        log.info("  max | I numerical - I closed form | = %.2e (peak %.3f)", err_I, np.max(np.abs(I)))
+    else:
+        log.warning("window (half-length %.3f s) longer than half the signal: no frame to compare", half_window)
     log.info("interference zones (eps = %g): %s s", args.eps, [(round(lo, 3), round(hi, 3)) for lo, hi in zones])
     log.info("analytic bound: [%.3f, %.3f] s", tc - half, tc + half)
 

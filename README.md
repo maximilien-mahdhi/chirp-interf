@@ -400,7 +400,7 @@ They cross at $`t = 0.5`$ s. The Gaussian window has standard deviation $`\sigma
 
 <br>
 
-The comparison excludes 50 ms at each end of the signal, where zero padding biases the discrete STFT.
+The comparison only uses the frames whose window lies entirely inside the signal (here $`t \in [0.04,\ 0.96]`$ s) : near the edges, zero padding biases the discrete STFT. On the same frames, the interference term alone matches its closed form to $`1.7 \cdot 10^{-4}`$ (peak $`1.99`$).
 
 <br>
 
