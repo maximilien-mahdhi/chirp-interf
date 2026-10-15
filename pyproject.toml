@@ -1,0 +1,54 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "chirp-interf"
+version = "0.2.0"
+description = "Time-frequency analysis of multicomponent chirps: sub-sampled STFT, signal recovery, ridge extraction and closed-form interference terms (C++/OpenMP core, Python API)"
+readme = "README.md"
+authors = [{ name = "Maximilien Mahdhi" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "matplotlib>=3.7", "rich>=13"]
+
+[project.scripts]
+chirp-recovery = "chirp_interf.experiments.recovery_comparison:main"
+chirp-interference = "chirp_interf.experiments.chirp_interference:main"
+chirp-ridges = "chirp_interf.experiments.ridge_extraction:main"
+chirp-benchmark = "chirp_interf.experiments.benchmark:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[dependency-groups]
+# installed automatically by `uv sync` / `uv run`
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[tool.scikit-build]
+wheel.packages = ["python/chirp_interf"]
+cmake.build-type = "Release"
+minimum-version = "build-system.requires"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+src = ["python"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E741", "B905"]  # math notation (I, l) is intentional
+
+[tool.ruff.lint.isort]
+known-first-party = ["chirp_interf"]
+
+[tool.uv]
+# Rebuild the C++ extension on `uv sync` / `uv run` whenever the native sources change.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "CMakeLists.txt" },
+    { file = "src/**/*" },
+    { file = "include/**/*" },
+    { file = "bindings/**/*" },
+]

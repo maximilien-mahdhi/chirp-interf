@@ -1,0 +1,34 @@
+# --- uv -------------------------------------------------------------------
+# Project environment created by `uv sync` / `uv run`.
+.venv/
+# Local cache, only if UV_CACHE_DIR points inside the repository.
+.uv-cache/
+# uv.lock and .python-version are meant to be committed: do not ignore them.
+
+# --- build (CMake / scikit-build-core) -------------------------------------
+build/
+_skbuild/
+dist/
+wheelhouse/
+*.egg-info/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.so
+*.pyd
+*.dylib
+*.o
+
+# --- python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- editors / OS ----------------------------------------------------------
+.DS_Store
+.vscode/
+.idea/
