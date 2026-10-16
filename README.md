@@ -1,6 +1,6 @@
 <div align="center">
 
-# 〰️ chirp-interf 〰️
+# 📈 chirp-interf 📈
 
 **Time-frequency analysis of multicomponent chirps : sub-sampled STFT, signal recovery from a thresholded transform, ridge extraction and closed-form interference terms.**
 
